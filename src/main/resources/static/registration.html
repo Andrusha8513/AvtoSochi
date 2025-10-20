@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Registration</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: "Inter", sans-serif;
+            background-color: #f3f4f6;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+        }
+        .container {
+            background-color: #ffffff;
+            padding: 2.5rem;
+            border-radius: 0.75rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 28rem;
+            text-align: center;
+        }
+        h2 {
+            color: #1f2937;
+            font-size: 1.875rem;
+            font-weight: 700;
+            margin-bottom: 1.5rem;
+        }
+        label {
+            display: block;
+            text-align: left;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+            color: #374151;
+        }
+        input[type="text"],
+        input[type="password"] {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            margin-bottom: 1rem;
+            border: 1px solid #d1d5db;
+            border-radius: 0.5rem;
+            box-sizing: border-box;
+            font-size: 1rem;
+            color: #1f2937;
+        }
+        button {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            background-color: #4f46e5;
+            color: white;
+            border: none;
+            border-radius: 0.5rem;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.2s ease-in-out;
+        }
+        button:hover {
+            background-color: #4338ca;
+        }
+        .error-message {
+            color: #ef4444;
+            margin-bottom: 1rem;
+            font-weight: 500;
+        }
+        .success-message {
+            color: #22c55e;
+            margin-bottom: 1rem;
+            font-weight: 500;
+        }
+        .info-message {
+            color: #3b82f6;
+            margin-bottom: 1rem;
+            font-weight: 500;
+        }
+        .link {
+            display: block;
+            margin-top: 1.5rem;
+            color: #4f46e5;
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.2s ease-in-out;
+        }
+        .link:hover {
+            color: #4338ca;
+        }
+        .resend-link {
+            color: #4f46e5;
+            text-decoration: none;
+            font-weight: 500;
+            cursor: pointer;
+            transition: color 0.2s ease-in-out;
+        }
+        .resend-link:hover {
+            color: #4338ca;
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+
+    <div id="registrationSection">
+        <h2>Register New User</h2>
+        <div id="regError" class="error-message" style="display:none;"></div>
+
+        <form id="registrationForm">
+            <div>
+                <label for="email">Email:</label>
+                <input type="text" id="email" name="email" required>
+            </div>
+            <div>
+                <label for="password">Password:</label>
+                <input type="password" id="password" name="password" required>
+            </div>
+            <div>
+                <button type="submit">Register</button>
+            </div>
+        </form>
+    </div>
+
+    <div id="confirmationSection" style="display: none;">
+        <h2>Confirm Your Email</h2>
+        <div id="confInfo" class="info-message">We've sent a code to your email. Please enter it below.</div>
+        <div id="confError" class="error-message" style="display:none;"></div>
+        <div id="confSuccess" class="success-message" style="display:none;"></div>
+
+        <form id="confirmationForm">
+            <div>
+                <label for="code">Confirmation Code:</label>
+                <input type="text" id="code" name="code" required>
+            </div>
+            <div>
+                <button type="submit">Confirm</button>
+            </div>
+        </form>
+
+        <p class="mt-4 text-center">
+            Didn't receive the email?
+            <a href="#" id="resendCodeLink" class="resend-link">Send code again.</a>
+        </p>
+    </div>
+
+    <a href="/login" class="link">Already have an account? Login</a>
+</div>
+
+<script>
+    // Сохраняем email для использования в функции повторной отправки
+    let userEmail = '';
+
+    // --- СКРИПТ ДЛЯ ФОРМЫ РЕГИСТРАЦИИ ---
+    document.getElementById('registrationForm').addEventListener('submit', async function(event) {
+        event.preventDefault(); // Отменяем стандартную отправку формы
+
+        const email = document.getElementById('email').value;
+        const password = document.getElementById('password').value;
+        const regErrorDiv = document.getElementById('regError');
+        regErrorDiv.style.display = 'none';
+
+        // Сохраняем email для возможной повторной отправки
+        userEmail = email;
+
+        try {
+            const response = await fetch('/api/users/registration', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, password })
+            });
+
+            // Если сервер ответил ошибкой (например, почта занята)
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(errorText);
+            }
+
+            // Успех! Скрываем форму регистрации и показываем форму подтверждения
+            document.getElementById('registrationSection').style.display = 'none';
+            document.getElementById('confirmationSection').style.display = 'block';
+
+        } catch (error) {
+            console.error('Registration error:', error);
+            regErrorDiv.textContent = 'Error: ' + error.message;
+            regErrorDiv.style.display = 'block';
+        }
+    });
+
+    // --- СКРИПТ ДЛЯ ФОРМЫ ПОДТВЕРЖДЕНИЯ ---
+    document.getElementById('confirmationForm').addEventListener('submit', async function(event) {
+        event.preventDefault(); // Отменяем стандартную отправку формы
+
+        const code = document.getElementById('code').value;
+        const confErrorDiv = document.getElementById('confError');
+        const confSuccessDiv = document.getElementById('confSuccess');
+        confErrorDiv.style.display = 'none';
+        confSuccessDiv.style.display = 'none';
+
+        try {
+            // Отправляем GET-запрос с кодом в параметре
+            const response = await fetch(`/api/users/confirm?code=${code}`);
+
+            // Если код неверный, сервер вернет ошибку
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(errorText);
+            }
+
+            // Успех! Показываем сообщение и перенаправляем на логин
+            const successText = await response.text();
+            confSuccessDiv.textContent = successText + ' Redirecting to login...';
+            confSuccessDiv.style.display = 'block';
+            document.getElementById('confirmationForm').style.display = 'none'; // Скрываем форму
+
+            setTimeout(() => {
+                window.location.href = '/login'; // Переход на страницу логина через 2 секунды
+            }, 2000);
+
+        } catch (error) {
+            console.error('Confirmation error:', error);
+            confErrorDiv.textContent = 'Error: ' + error.message;
+            confErrorDiv.style.display = 'block';
+        }
+    });
+
+    // --- СКРИПТ ДЛЯ ПОВТОРНОЙ ОТПРАВКИ КОДА ---
+    document.getElementById('resendCodeLink').addEventListener('click', async function(event) {
+        event.preventDefault();
+
+        try {
+            const response = await fetch(`/api/users/resend-code?email=${userEmail}`, {
+                method: 'POST'
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(errorText);
+            }
+
+            alert('New confirmation code has been sent! Please check your email.');
+        } catch (error) {
+            alert('Error: ' + error.message);
+        }
+    });
+</script>
+</body>
+</html>

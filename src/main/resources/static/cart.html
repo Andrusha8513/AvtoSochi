@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Корзина</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <style>
+        .cart-item {
+            border-bottom: 1px solid #eee;
+            padding: 15px 0;
+        }
+        .product-image {
+            width: 80px;
+            height: 80px;
+            object-fit: cover;
+        }
+        .quantity-controls {
+            display: flex;
+            align-items: center;
+        }
+        .quantity-btn {
+            width: 30px;
+            height: 30px;
+        }
+        #price-update-alert {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+    <div class="container">
+        <a class="navbar-brand" href="/">AutoSochi</a>
+        <div class="d-flex">
+            <a href="/catalog.html" class="btn btn-outline-light me-2">Вернуться в каталог</a>
+            <a href="/cart" class="btn btn-outline-light position-relative">
+                <i class="bi bi-cart3"></i> Корзина
+                <span id="cart-count" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">0</span>
+            </a>
+        </div>
+    </div>
+</nav>
+
+<div class="container mt-4">
+    <h2>Корзина</h2>
+
+    <!-- Уведомление об изменении цен -->
+    <div id="price-update-alert" class="alert alert-info alert-dismissible fade show">
+        <i class="bi bi-info-circle"></i>
+        <span id="price-update-message"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+
+    <div id="empty-cart" class="text-center mt-5" style="display: none;">
+        <i class="bi bi-cart-x" style="font-size: 4rem; color: #6c757d;"></i>
+        <h4 class="mt-3">Корзина пуста</h4>
+        <p class="text-muted">Добавьте товары из каталога</p>
+        <a href="/catalog" class="btn btn-primary">Перейти в каталог</a>
+    </div>
+
+    <div id="cart-content" style="display: none;">
+        <div class="row">
+            <div class="col-md-8">
+                <div id="cart-items">
+                    <!-- Товары будут загружены через JavaScript -->
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h5>Итого</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between mb-2">
+                            <span>Товары:</span>
+                            <span id="total-items">0</span>
+                        </div>
+                        <div class="d-flex justify-content-between mb-2">
+                            <span>Общая сумма:</span>
+                            <span id="total-price">0 ₽</span>
+                        </div>
+                        <hr>
+                        <button class="btn btn-primary w-100" onclick="checkout()">
+                            Оформить заказ
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    let cart = JSON.parse(localStorage.getItem('cart')) || {};
+
+    document.addEventListener('DOMContentLoaded', function() {
+        loadCart();
+    });
+
+    // Основная функция загрузки корзины
+    async function loadCart() {
+        try {
+            // Сначала обновляем цены из базы данных
+            await updateCartPrices();
+
+            // Затем отображаем корзину
+            displayCart();
+
+        } catch (error) {
+            console.error('Ошибка загрузки корзины:', error);
+            // Fallback: показать корзину без обновления цен
+            showFallbackCart();
+        }
+    }
+
+    // Обновление цен из базы данных
+    async function updateCartPrices() {
+        if (Object.keys(cart).length === 0) return;
+
+        try {
+            const response = await fetch('/api/products/AllProducts');
+            if (!response.ok) throw new Error('Ошибка загрузки товаров');
+
+            const currentProducts = await response.json();
+            let removedItems = 0;
+            let updatedPrices = 0;
+            let priceChanges = [];
+
+            // Обновляем цены и проверяем наличие товаров
+            Object.keys(cart).forEach(productId => {
+                const currentProduct = currentProducts.find(p => p.id == productId);
+
+                if (currentProduct) {
+                    // Запоминаем старую цену для сравнения
+                    const oldPrice = cart[productId].price;
+
+                    // Обновляем все данные товара
+                    cart[productId].price = currentProduct.price;
+                    cart[productId].name = currentProduct.name;
+                    cart[productId].inStock = currentProduct.inStock;
+                    cart[productId].imageId = currentProduct.previewImageId;
+
+                    // Считаем изменения цен
+                    if (oldPrice !== currentProduct.price) {
+                        updatedPrices++;
+                        priceChanges.push({
+                            name: currentProduct.name,
+                            oldPrice: oldPrice,
+                            newPrice: currentProduct.price
+                        });
+                    }
+                } else {
+                    // Товар больше не существует
+                    delete cart[productId];
+                    removedItems++;
+                }
+            });
+
+            // Сохраняем обновленную корзину
+            saveCart();
+
+            // Показываем уведомления
+            if (removedItems > 0) {
+                showPriceUpdateMessage(`Удалено ${removedItems} товаров, которых больше нет в каталоге`);
+            }
+
+            if (updatedPrices > 0) {
+                const message = `Обновлены цены для ${updatedPrices} товаров`;
+                showPriceUpdateMessage(message);
+
+                // Детали изменения цен (для отладки)
+                console.log('Изменения цен:', priceChanges);
+            }
+
+        } catch (error) {
+            console.error('Ошибка обновления цен:', error);
+            throw error; // Пробрасываем ошибку выше
+        }
+    }
+
+    // Отображение корзины
+    function displayCart() {
+        const cartItems = Object.values(cart);
+
+        if (cartItems.length === 0) {
+            document.getElementById('empty-cart').style.display = 'block';
+            document.getElementById('cart-content').style.display = 'none';
+            return;
+        }
+
+        document.getElementById('empty-cart').style.display = 'none';
+        document.getElementById('cart-content').style.display = 'block';
+
+        // Обновляем итоги
+        const totalItems = cartItems.reduce((sum, item) => sum + item.quantity, 0);
+        const totalPrice = cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+
+        document.getElementById('total-items').textContent = totalItems;
+        document.getElementById('total-price').textContent = totalPrice.toFixed(2) + ' ₽';
+
+        // Отображаем товары
+        const itemsContainer = document.getElementById('cart-items');
+        itemsContainer.innerHTML = '';
+
+        cartItems.forEach(item => {
+            const itemDiv = document.createElement('div');
+            itemDiv.className = 'cart-item';
+
+            if (!item.inStock) {
+                itemDiv.classList.add('text-muted');
+            }
+
+            const imageHtml = item.imageId
+                ? `<img src="/images/${item.imageId}" class="product-image" alt="${item.name}">`
+                : `<div class="product-image bg-light d-flex align-items-center justify-content-center">
+                         <i class="bi bi-image text-muted"></i>
+                       </div>`;
+
+            itemDiv.innerHTML = `
+                <div class="row align-items-center">
+                    <div class="col-3">
+                        ${imageHtml}
+                    </div>
+                    <div class="col-4">
+                        <h6>${item.name}</h6>
+                        <p class="text-muted mb-0">${item.price.toFixed(2)} ₽</p>
+                        ${!item.inStock ? '<p class="text-danger mb-0"><small>Нет в наличии</small></p>' : ''}
+                    </div>
+                    <div class="col-3">
+                        <div class="quantity-controls">
+                            <button class="btn btn-outline-secondary quantity-btn" onclick="changeQuantity(${item.id}, -1)"
+                                ${!item.inStock ? 'disabled' : ''}>
+                                -
+                            </button>
+                            <span class="mx-2">${item.quantity}</span>
+                            <button class="btn btn-outline-secondary quantity-btn" onclick="changeQuantity(${item.id}, 1)"
+                                ${!item.inStock ? 'disabled' : ''}>
+                                +
+                            </button>
+                        </div>
+                    </div>
+                    <div class="col-2 text-end">
+                        <button class="btn btn-danger btn-sm" onclick="removeFromCart(${item.id})">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            `;
+            itemsContainer.appendChild(itemDiv);
+        });
+    }
+
+    // Fallback на случай ошибки
+    function showFallbackCart() {
+        const cartItems = Object.values(cart);
+
+        if (cartItems.length === 0) {
+            document.getElementById('empty-cart').style.display = 'block';
+            document.getElementById('cart-content').style.display = 'none';
+            return;
+        }
+
+        document.getElementById('empty-cart').style.display = 'none';
+        document.getElementById('cart-content').style.display = 'block';
+
+        // Показываем предупреждение
+        const warningHtml = `
+            <div class="alert alert-warning">
+                <i class="bi bi-exclamation-triangle"></i>
+                Цены могут быть неактуальными. Не удалось обновить информацию.
+            </div>
+        `;
+        document.getElementById('cart-content').insertAdjacentHTML('afterbegin', warningHtml);
+
+        // Отображаем корзину с устаревшими данными
+        const totalItems = cartItems.reduce((sum, item) => sum + item.quantity, 0);
+        const totalPrice = cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+
+        document.getElementById('total-items').textContent = totalItems;
+        document.getElementById('total-price').textContent = totalPrice.toFixed(2) + ' ₽';
+
+        const itemsContainer = document.getElementById('cart-items');
+        itemsContainer.innerHTML = '';
+
+        cartItems.forEach(item => {
+            const itemDiv = document.createElement('div');
+            itemDiv.className = 'cart-item';
+
+            const imageHtml = item.imageId
+                ? `<img src="/images/${item.imageId}" class="product-image" alt="${item.name}">`
+                : `<div class="product-image bg-light d-flex align-items-center justify-content-center">
+                         <i class="bi bi-image text-muted"></i>
+                       </div>`;
+
+            itemDiv.innerHTML = `
+                <div class="row align-items-center">
+                    <div class="col-3">
+                        ${imageHtml}
+                    </div>
+                    <div class="col-4">
+                        <h6>${item.name}</h6>
+                        <p class="text-muted mb-0">${item.price.toFixed(2)} ₽</p>
+                        <p class="text-warning mb-0"><small>Цена может быть неактуальной</small></p>
+                    </div>
+                    <div class="col-3">
+                        <div class="quantity-controls">
+                            <button class="btn btn-outline-secondary quantity-btn" onclick="changeQuantity(${item.id}, -1)">
+                                -
+                            </button>
+                            <span class="mx-2">${item.quantity}</span>
+                            <button class="btn btn-outline-secondary quantity-btn" onclick="changeQuantity(${item.id}, 1)">
+                                +
+                            </button>
+                        </div>
+                    </div>
+                    <div class="col-2 text-end">
+                        <button class="btn btn-danger btn-sm" onclick="removeFromCart(${item.id})">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            `;
+            itemsContainer.appendChild(itemDiv);
+        });
+    }
+
+    // Показать сообщение об изменении цен
+    function showPriceUpdateMessage(message) {
+        const alertElement = document.getElementById('price-update-alert');
+        const messageElement = document.getElementById('price-update-message');
+
+        messageElement.textContent = message;
+        alertElement.style.display = 'block';
+
+        // Автоматически скрыть через 5 секунд
+        setTimeout(() => {
+            alertElement.style.display = 'none';
+        }, 5000);
+    }
+
+    function changeQuantity(productId, delta) {
+        if (cart[productId]) {
+            const newQuantity = cart[productId].quantity + delta;
+
+            if (newQuantity <= 0) {
+                removeFromCart(productId);
+            } else {
+                cart[productId].quantity = newQuantity;
+                saveCart();
+                loadCart(); // Перезагружаем для обновления цен
+            }
+        }
+    }
+
+    function removeFromCart(productId) {
+        if (confirm('Удалить товар из корзины?')) {
+            delete cart[productId];
+            saveCart();
+            loadCart();
+        }
+    }
+
+    async function checkout() {
+        if (Object.keys(cart).length === 0) {
+            alert('Корзина пуста');
+            return;
+        }
+
+        // Проверяем наличие товаров перед оформлением
+        const outOfStockItems = Object.values(cart).filter(item => !item.inStock);
+        if (outOfStockItems.length > 0) {
+            alert('Некоторые товары отсутствуют в наличии. Пожалуйста, удалите их из корзины перед оформлением заказа.');
+            return;
+        }
+
+        // Преобразуем корзину в нужный для бэкенда формат
+        const orderData = {};
+        for (const key in cart) {
+            orderData[key] = { id: cart[key].id, quantity: cart[key].quantity };
+        }
+
+        try {
+            const response = await fetch('/api/orders/checkout', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(orderData)
+            });
+
+            if (response.status === 401) {
+                alert('Для оформления заказа необходимо войти в систему.');
+                window.location.href = '/login.html';
+                return;
+            }
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.message || 'Не удалось оформить заказ.');
+            }
+
+            const newOrder = await response.json();
+            alert(`Заказ №${newOrder.id} успешно оформлен!`);
+
+            // Очищаем корзину и переходим на страницу заказов
+            cart = {};
+            saveCart();
+            window.location.href = '/my-orders.html';
+
+        } catch (error) {
+            console.error('Ошибка оформления заказа:', error);
+            alert('Произошла ошибка при оформлении заказа: ' + error.message);
+        }
+    }
+
+    function saveCart() {
+        localStorage.setItem('cart', JSON.stringify(cart));
+        updateCartCount();
+    }
+
+    function updateCartCount() {
+        const total = Object.values(cart).reduce((sum, item) => sum + item.quantity, 0);
+        document.getElementById('cart-count').textContent = total;
+    }
+</script>
+</body>
+</html>

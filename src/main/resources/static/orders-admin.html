@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Управление заказами</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <style>
+        .product-list {
+            max-height: 120px;
+            overflow-y: auto;
+            font-size: 0.9rem;
+        }
+        .status-badge {
+            font-size: 0.8rem;
+            padding: 0.4em 0.6em;
+        }
+        .stats-card {
+            background: linear-gradient(45deg, #e3f2fd, #bbdefb);
+            border: none;
+        }
+        .summ-highlight {
+            background-color: #fff3cd;
+            font-weight: bold;
+        }
+        .action-buttons {
+            min-width: 120px;
+        }
+    </style>
+</head>
+<body>
+<div class="container mt-4">
+    <h1 class="mb-4">Панель управления заказами</h1>
+
+    <!-- Статистика -->
+    <div id="stats-container" class="card stats-card mb-4">
+        <div class="card-body">
+            <div class="row text-center">
+                <div class="col-md-3">
+                    <h4 id="total-orders">0</h4>
+                    <small class="text-muted">Всего заказов</small>
+                </div>
+                <div class="col-md-3">
+                    <h4 id="placed-orders">0</h4>
+                    <small class="text-muted">Оформлено</small>
+                </div>
+                <div class="col-md-3">
+                    <h4 id="delivered-orders">0</h4>
+                    <small class="text-muted">Доставлено</small>
+                </div>
+                <div class="col-md-3">
+                    <h4 id="total-summ">0 ₽</h4>
+                    <small class="text-muted">Общая сумма</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Поиск -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-3">
+                    <label class="form-label">Поиск по почте </label>
+                    <input type="text" id="email-search" class="form-control" placeholder="Например: 79181234567">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Поиск по ID заказа</label>
+                    <input type="number" id="id-search" class="form-control" placeholder="Например: 123">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Фильтр по статусу</label>
+                    <select class="form-select" id="status-search">
+                        <option value="">Все статусы</option>
+                        <option value="PLACED">Оформлен</option>
+                        <option value="IN_TRANSIT">В пути</option>
+                        <option value="AT_PICKUP_POINT">В пункте выдачи</option>
+                        <option value="DELIVERED">Товар у покупателя</option>
+                        <option value="RETURN_REQUESTED">Оформлен возврат</option>
+                        <option value="RETURN_COMPLETED">Возврат выполнен</option>
+                    </select>
+                </div>
+                <div class="col-md-4 d-flex align-items-end">
+                    <button id="search-btn" class="btn btn-primary me-2">Найти</button>
+                    <button id="reset-btn" class="btn btn-outline-secondary me-2">Сбросить</button>
+                    <button id="export-btn" class="btn btn-success me-2">Экспорт</button>
+                    <button id="refresh-summ-btn" class="btn btn-warning" onclick="refreshAllSums()">
+                        <i class="bi bi-arrow-clockwise"></i> Рассчитать сумму
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Результаты поиска -->
+    <div id="search-stats" class="alert alert-info mb-3" style="display: none;">
+        <i class="bi bi-info-circle"></i>
+        <span id="search-stats-text"></span>
+    </div>
+
+    <!-- Таблица заказов -->
+    <div class="table-responsive">
+        <table class="table table-striped table-hover align-middle">
+            <thead class="table-dark">
+            <tr>
+                <th>ID Заказа</th>
+                <th>Телефон клиента</th>
+                <th>Дата заказа</th>
+                <th>Общая сумма</th>
+                <th>Товары</th>
+                <th>Статус</th>
+                <th>Дней с заказа</th>
+                <th>Действия</th>
+            </tr>
+            </thead>
+            <tbody id="orders-table-body">
+            <tr>
+                <td colspan="8" class="text-center text-muted py-4">
+                    Загрузка заказов...
+                </td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    const statusOptions = {
+        "PLACED": "Оформлен",
+        "IN_TRANSIT": "В пути",
+        "AT_PICKUP_POINT": "В пункте выдачи",
+        "DELIVERED": "Товар у покупателя",
+        "RETURN_REQUESTED": "Оформлен возврат",
+        "RETURN_COMPLETED": "Возврат выполнен"
+    };
+
+    let allOrders = [];
+    let currentFilters = {};
+
+    document.addEventListener('DOMContentLoaded', () => {
+        loadAllOrders();
+
+        document.getElementById('search-btn').addEventListener('click', searchOrders);
+        document.getElementById('reset-btn').addEventListener('click', resetSearch);
+        document.getElementById('export-btn').addEventListener('click', exportOrders);
+        document.getElementById('status-search').addEventListener('change', searchOrders);
+
+        // Поиск при нажатии Enter
+        document.getElementById('email-search').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') searchOrders();
+        });
+        document.getElementById('id-search').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') searchOrders();
+        });
+    });
+
+    async function loadAllOrders() {
+        try {
+            showLoading();
+            const response = await fetch('/api/orders/admin/all');
+
+            if (!response.ok) {
+                throw new Error(`Ошибка сервера: ${response.status}`);
+            }
+
+            allOrders = await response.json();
+            updateStatistics(allOrders);
+            renderOrders(allOrders);
+            hideSearchStats();
+
+        } catch (error) {
+            console.error("Ошибка загрузки заказов:", error);
+            showError("Не удалось загрузить заказов: " + error.message);
+        }
+    }
+
+    async function searchOrders() {
+        const email = document.getElementById('email-search').value.trim();
+        const id = document.getElementById('id-search').value.trim();
+        const status = document.getElementById('status-search').value;
+
+        currentFilters = { email: email, id, status };
+
+        let url = '/api/orders/admin/search?';
+        const params = [];
+
+        if (id) params.push(`id=${id}`);
+        if (email) params.push(`email=${encodeURIComponent(email)}`);
+        if (status) params.push(`status=${status}`);
+
+        url += params.join('&');
+
+        try {
+            showLoading();
+            const response = await fetch(url);
+
+            if (!response.ok) {
+                throw new Error(`Ошибка сервера: ${response.status}`);
+            }
+
+            const orders = await response.json();
+            renderOrders(orders);
+            showSearchStats(orders, currentFilters);
+
+        } catch (error) {
+            console.error("Ошибка загрузки заказов:", error);
+            showError("Не удалось загрузить заказов: " + error.message);
+        }
+    }
+
+    function resetSearch() {
+        document.getElementById('email-search').value = '';
+        document.getElementById('id-search').value = '';
+        document.getElementById('status-search').value = '';
+        currentFilters = {};
+        renderOrders(allOrders);
+        hideSearchStats();
+    }
+
+    function renderOrders(orders) {
+        const tableBody = document.getElementById('orders-table-body');
+
+        if (!orders || orders.length === 0) {
+            tableBody.innerHTML = `
+                <tr>
+                    <td colspan="8" class="text-center text-muted py-4">
+                        Заказы не найдены
+                    </td>
+                </tr>
+            `;
+            return;
+        }
+
+        tableBody.innerHTML = orders.map(order => {
+            const isReturnRequested = order.status === 'RETURN_REQUESTED';
+            const rowClass = isReturnRequested ? 'table-warning' : '';
+            const daysClass = order.daysSinceOrder > 14 ? 'text-danger' : 'text-muted';
+
+            return `
+                <tr class="${rowClass}">
+                    <td><strong>#${order.id}</strong></td>
+                    <td>${order.customerEmail || 'Не указан'}</td>
+                    <td>${formatDate(order.orderDate)}</td>
+                    <td><strong>${formatCurrency(order.totalPrice)}</strong></td>
+                    <td>
+                        <div class="product-list">
+                            ${order.items && order.items.length > 0
+                ? order.items.map(item =>
+                    `<div class="mb-1">
+                                        ${item.product?.name || 'Неизвестный товар'}
+                                        <span class="text-muted">(x${item.quantity})</span>
+                                        <small class="text-muted">${formatCurrency(item.priceAtPurchase)}</small>
+                                    </div>`
+                ).join('')
+                : '<span class="text-muted">Товары не указаны</span>'
+            }
+                        </div>
+                    </td>
+                    <td>
+                        <span class="badge ${getStatusBadgeClass(order.status)} status-badge">
+                            ${statusOptions[order.status] || order.status}
+                            ${isReturnRequested ? ' ⚠️' : ''}
+                        </span>
+                        ${isReturnRequested ? '<br><small class="text-warning">Требует внимания</small>' : ''}
+                    </td>
+                    <td>
+                        <span class="${daysClass}" title="Дней с момента заказа">
+                            ${order.daysSinceOrder || 0}
+                        </span>
+                    </td>
+                    <td class="action-buttons">
+                        <div class="d-flex flex-column gap-2">
+                            <select class="form-select form-select-sm"
+                                    id="status-select-${order.id}"
+                                    onchange="onStatusChange(${order.id})">
+                                ${Object.entries(statusOptions).map(([key, value]) => `
+                                    <option value="${key}" ${key === order.status ? 'selected' : ''}>
+                                        ${value}
+                                    </option>
+                                `).join('')}
+                            </select>
+                            <div class="d-flex gap-1">
+                                <button class="btn btn-sm btn-success"
+                                        onclick="updateStatus(${order.id})"
+                                        id="save-btn-${order.id}"
+                                        style="display: none;"
+                                        title="Сохранить статус">
+                                    <i class="bi bi-check"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+    }
+
+    function updateStatistics(orders) {
+        const deliveredOrders = orders.filter(o => o.status === 'DELIVERED');
+        const stats = {
+            total: orders.length,
+            placed: orders.filter(o => o.status === 'PLACED').length,
+            delivered: deliveredOrders.length,
+            totalSumm: deliveredOrders.reduce((sum, o) => sum + (o.summItem || 0), 0)
+        };
+
+        document.getElementById('total-orders').textContent = stats.total;
+        document.getElementById('placed-orders').textContent = stats.placed;
+        document.getElementById('delivered-orders').textContent = stats.delivered;
+        document.getElementById('total-summ').textContent = formatCurrency(stats.totalSumm);
+    }
+
+    function showSearchStats(orders, filters) {
+        const statsElement = document.getElementById('search-stats');
+        const statsTextElement = document.getElementById('search-stats-text');
+
+        let statsText = `Найдено заказов: <strong>${orders.length}</strong>`;
+        const deliveredOrders = orders.filter(o => o.status === 'DELIVERED');
+        const totalSumm = deliveredOrders.reduce((sum, o) => sum + (o.summItem || 0), 0);
+        statsText += ` | Сумма доставленных: <strong>${formatCurrency(totalSumm)}</strong>`;
+
+        if (filters.status) {
+            statsText += ` | Статус: <strong>${statusOptions[filters.status] || filters.status}</strong>`;
+        }
+        if (filters.email) {
+            statsText += ` | Телефон: <strong>${filters.email}</strong>`;
+        }
+        if (filters.id) {
+            statsText += ` | ID: <strong>${filters.id}</strong>`;
+        }
+
+        statsTextElement.innerHTML = statsText;
+        statsElement.style.display = 'block';
+    }
+
+    function hideSearchStats() {
+        document.getElementById('search-stats').style.display = 'none';
+    }
+
+    async function refreshAllSums() {
+        try {
+            showLoading();
+
+            const response = await fetch('/api/orders/admin/total-delivered-summ', {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error(`Ошибка сервера: ${response.status}`);
+            }
+
+            const totalSumm = await response.json();
+
+            // ОБНОВЛЯЕМ ЦИФРУ НА ПАНЕЛИ УПРАВЛЕНИЯ
+            document.getElementById('total-summ').textContent = formatCurrency(totalSumm);
+
+            showSuccess(`Рассчитана общая сумма доставленных заказов: ${formatCurrency(totalSumm)}`);
+
+            // Только обновляем суммы в существующих заказах без полной перезагрузки
+            updateOrderSumsInTable(totalSumm);
+
+        } catch (error) {
+            console.error("Ошибка расчета сумм:", error);
+            showError("Не удалось рассчитать суммы: " + error.message);
+        }
+    }
+
+    function updateOrderSumsInTable(totalSumm) {
+        // Обновляем только сумму на панели, таблицу не перезагружаем
+        // Если нужно обновить суммы в отдельных заказах, можно добавить логику здесь
+        console.log("Общая сумма обновлена:", totalSumm);
+
+        // Можно также обновить статистику для текущего отображения
+        if (allOrders.length > 0) {
+            const stats = {
+                total: allOrders.length,
+                placed: allOrders.filter(o => o.status === 'PLACED').length,
+                delivered: allOrders.filter(o => o.status === 'DELIVERED').length,
+                totalSumm: totalSumm
+            };
+
+            document.getElementById('total-orders').textContent = stats.total;
+            document.getElementById('placed-orders').textContent = stats.placed;
+            document.getElementById('delivered-orders').textContent = stats.delivered;
+            document.getElementById('total-summ').textContent = formatCurrency(stats.totalSumm);
+        }
+    }
+
+    function exportOrders() {
+        const filters = currentFilters;
+        let exportData = allOrders;
+
+        if (filters.status || filters.email || filters.id) {
+            exportData = exportData.filter(order => {
+                let match = true;
+                if (filters.status && order.status !== filters.status) match = false;
+                if (filters.email && !order.customerEmail?.includes(filters.email)) match = false;
+                if (filters.id && order.id != filters.id) match = false;
+                return match;
+            });
+        }
+
+        const csvContent = convertToCSV(exportData);
+        downloadCSV(csvContent, `orders_export_${new Date().toISOString().split('T')[0]}.csv`);
+    }
+
+    function convertToCSV(orders) {
+        const headers = ['ID', 'Телефон', 'Дата', 'Общая сумма', 'Статус', 'Товары', 'Дней с заказа'];
+        const rows = orders.map(order => [
+            order.id,
+            order.customerEmail || '',
+            formatDate(order.orderDate),
+            order.totalPrice.toFixed(2),
+            statusOptions[order.status] || order.status,
+            order.items.map(item => `${item.product?.name} (x${item.quantity})`).join('; '),
+            order.daysSinceOrder || 0
+        ]);
+
+        return [headers, ...rows].map(row => row.map(field => `"${field}"`).join(',')).join('\n');
+    }
+
+    function downloadCSV(content, filename) {
+        const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        const url = URL.createObjectURL(blob);
+
+        link.setAttribute('href', url);
+        link.setAttribute('download', filename);
+        link.style.visibility = 'hidden';
+
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+
+    function formatDate(dateString) {
+        if (!dateString) return 'Не указана';
+        try {
+            const date = new Date(dateString);
+            return date.toLocaleString('ru-RU');
+        } catch (e) {
+            return dateString;
+        }
+    }
+
+    function formatCurrency(amount) {
+        return new Intl.NumberFormat('ru-RU', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+        }).format(amount || 0) + ' ₽';
+    }
+
+    function getStatusBadgeClass(status) {
+        const statusClasses = {
+            'PLACED': 'bg-secondary',
+            'IN_TRANSIT': 'bg-primary',
+            'AT_PICKUP_POINT': 'bg-warning',
+            'DELIVERED': 'bg-success',
+            'RETURN_REQUESTED': 'bg-info',
+            'RETURN_COMPLETED': 'bg-dark'
+        };
+        return statusClasses[status] || 'bg-secondary';
+    }
+
+    function onStatusChange(orderId) {
+        const saveBtn = document.getElementById(`save-btn-${orderId}`);
+        if (saveBtn) {
+            saveBtn.style.display = 'block';
+        }
+    }
+
+    async function updateStatus(orderId) {
+        const select = document.getElementById(`status-select-${orderId}`);
+        const newStatus = select.value;
+        const saveBtn = document.getElementById(`save-btn-${orderId}`);
+
+        if (!newStatus) {
+            alert('Выберите статус');
+            return;
+        }
+
+        try {
+            saveBtn.disabled = true;
+            saveBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+
+            const response = await fetch(`/api/orders/admin/${orderId}/status`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({ status: newStatus })
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(errorText || `HTTP error! status: ${response.status}`);
+            }
+
+            const updatedOrder = await response.json();
+            showSuccess('Статус заказа успешно обновлен!');
+
+            saveBtn.style.display = 'none';
+            saveBtn.disabled = false;
+            saveBtn.innerHTML = '<i class="bi bi-check"></i>';
+
+            // Обновляем данные
+            if (Object.keys(currentFilters).length > 0) {
+                searchOrders();
+            } else {
+                loadAllOrders();
+            }
+
+        } catch (error) {
+            console.error("Ошибка обновления статуса:", error);
+            alert('Ошибка обновления статуса: " + error.message');
+
+            saveBtn.disabled = false;
+            saveBtn.innerHTML = '<i class="bi bi-check"></i>';
+        }
+    }
+
+    function showLoading() {
+        const tableBody = document.getElementById('orders-table-body');
+        tableBody.innerHTML = `
+            <tr>
+                <td colspan="8" class="text-center py-4">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Загрузка...</span>
+                    </div>
+                    <p class="text-muted mt-2">Загрузка заказов...</p>
+                </td>
+            </tr>
+        `;
+    }
+
+    function showError(message) {
+        const tableBody = document.getElementById('orders-table-body');
+        tableBody.innerHTML = `
+            <tr>
+                <td colspan="8" class="text-center py-4">
+                    <div class="text-danger">
+                        <i class="bi bi-exclamation-triangle" style="font-size: 2rem;"></i>
+                        <p class="mt-2">${message}</p>
+                        <button class="btn btn-outline-primary btn-sm" onclick="loadAllOrders()">
+                            Попробовать снова
+                        </button>
+                    </div>
+                </td>
+            </tr>
+        `;
+    }
+
+    function showSuccess(message) {
+        const alert = document.createElement('div');
+        alert.className = 'alert alert-success position-fixed';
+        alert.style.cssText = 'top: 20px; right: 20px; z-index: 1050; min-width: 300px;';
+        alert.innerHTML = `
+            <i class="bi bi-check-circle"></i>
+            ${message}
+            <button type="button" class="btn-close" onclick="this.parentElement.remove()"></button>
+        `;
+
+        document.body.appendChild(alert);
+        setTimeout(() => alert.remove(), 3000);
+    }
+</script>
+</body>
+</html>

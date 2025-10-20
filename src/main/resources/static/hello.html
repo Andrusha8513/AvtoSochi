@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Hello World!</title>
+</head>
+<body>
+<h1 id="welcomeMessage">Hello!</h1>
+<form id="logoutForm" method="post">
+    <a href="/main">Main</a>
+    <a href="/createProduct">Create</a>
+    <a href="/AllProduct.html">AllProduct</a>
+    <a href="/catalog.html">Catalog</a>
+    <a href="/cart.html">Cart</a>
+    <a href="/my-orders.html">MyOrders</a>
+    <a href="/orders-admin">MyAdminOrders</a>
+    <a href="/profile-edit.html">Pfofile</a>
+    <input type="submit" value="Sign Out">
+</form>
+
+<script>
+    // Get username from server (you'll need to implement an endpoint for this)
+    fetch('/api/user/current')
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('welcomeMessage').textContent = `Hello ${data.name}!`;
+        })
+        .catch(error => console.error('Error:', error));
+
+    // Handle logout
+    document.getElementById('logoutForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        fetch('/logout', { method: 'POST' })
+            .then(() => window.location.href = '/login?logout')
+            .catch(error => console.error('Error:', error));
+    });
+</script>
+</body>
+</html>

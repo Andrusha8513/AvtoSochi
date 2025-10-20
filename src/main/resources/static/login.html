@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Login Page</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .error { color: red; }
+        .logout { color: green; }
+    </style>
+</head>
+<body>
+<h1>Login page</h1>
+
+<div id="errorMessage" class="error" style="display: none;">
+    Invalid username and password.
+</div>
+
+<div id="logoutMessage" class="logout" style="display: none;">
+    You have been logged out.
+</div>
+
+<form id="loginForm">
+
+    <div>
+        <label>Email: <input type="text" name="email" required></label>
+    </div>
+    <div>
+        <label>Password: <input type="password" name="password" required></label>
+    </div>
+    <div>
+        <input type="submit" value="Sign In">
+    </div>
+
+</form>
+
+<a href="/registration">Add new users</a>
+<br/>
+<a href="/forgot-password.html">Forgot password?</a>
+
+<script>
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.has('error')) {
+        document.getElementById('errorMessage').style.display = 'block';
+    }
+    if (urlParams.has('logout')) {
+        document.getElementById('logoutMessage').style.display = 'block';
+    }
+
+    document.getElementById('loginForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const formData = new FormData(this);
+
+        fetch('/login', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: new URLSearchParams(formData)
+        })
+            .then(response => {
+                if (response.redirected) {
+                    window.location.href = response.url;
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
+    });
+</script>
+</body>
+</html>

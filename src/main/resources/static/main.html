@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>User List</title>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; }
+        tr:nth-child(even) { background-color: #f9f9f9; }
+        #rolesModal { display: none; position: fixed; top: 50%; left: 50%;
+            transform: translate(-50%, -50%); background: white;
+            padding: 20px; border: 1px solid #ccc; z-index: 1000;
+            box-shadow: 0 0 10px rgba(0,0,0,0.5); }
+        #rolesCheckboxes { margin: 15px 0; }
+        #rolesCheckboxes label { margin-left: 5px; }
+        #search-container { margin-bottom: 20px; }
+        #search-input { padding: 8px; width: 250px; }
+        #search-button, #reset-button { padding: 8px 12px; }
+        #reset-button { margin-left: 5px; }
+    </style>
+</head>
+<body>
+<h1>User List</h1>
+
+<div id="search-container">
+    <input type="text" id="search-input" placeholder="Enter email number to search...">
+    <button id="search-button" onclick="searchUser()">Search</button>
+    <button id="reset-button" onclick="resetSearch()">Reset</button>
+</div>
+
+<table id="usersTable">
+    <thead>
+    <tr>
+        <th>ID</th>
+        <th>Email</th>
+        <th>Roles</th>
+        <th>Actions</th>
+    </tr>
+    </thead>
+    <tbody></tbody>
+</table>
+
+<div id="rolesModal">
+    <h3>Edit Roles</h3>
+    <div id="rolesCheckboxes"></div>
+    <button onclick="saveRoles()">Save</button>
+    <button onclick="document.getElementById('rolesModal').style.display='none'">Cancel</button>
+</div>
+
+<script>
+    // --- Global variables and configuration ---
+    let users = [];
+    let currentUserId = null;
+    const Role = { USER: 'ROLE_USER', ADMIN: 'ROLE_ADMIN' };
+
+    // Get CSRF token from cookie
+    function getCookie(name) {
+        const value = `; ${document.cookie}`;
+        const parts = value.split(`; ${name}=`);
+        if (parts.length === 2) return parts.pop().split(';').shift();
+    }
+
+    // Set CSRF token for Axios
+    axios.defaults.headers.common['X-XSRF-TOKEN'] = getCookie('XSRF-TOKEN');
+
+    // --- Main logic when page loads ---
+    document.addEventListener('DOMContentLoaded', function() {
+        fetchAllUsers();
+    });
+
+    // --- Data functions ---
+    function fetchAllUsers() {
+        axios.get('/api/users')
+            .then(function(response) {
+                users = response.data;
+                renderTable(users);
+            })
+            .catch(function(error) {
+                console.error('Error fetching users:', error);
+                alert('Error loading users');
+            });
+    }
+
+    function renderTable(usersData) {
+        const tableBody = document.querySelector('#usersTable tbody');
+        tableBody.innerHTML = '';
+        const usersArray = Array.isArray(usersData) ? usersData : [usersData];
+
+        usersArray.forEach(user => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                    <td>${user.id}</td>
+                    <td>${user.email}</td>
+                    <td>${Array.from(user.roles).join(', ')}</td>
+                    <td>
+                        <button onclick="editRoles(${user.id})">Edit Roles</button>
+                    </td>
+                `;
+            tableBody.appendChild(row);
+        });
+    }
+
+    // --- Search functions ---
+    function searchUser() {
+        const email = document.getElementById('search-input').value;
+        if (!email) {
+            alert('Please enter a email number.');
+            return;
+        }
+
+        axios.get(`/api/users/search?email=${email}`)
+            .then(function(response) {
+                renderTable([response.data]);
+            })
+            .catch(function(error) {
+                if (error.response && error.response.status === 404) {
+                    alert('User not found.');
+                } else {
+                    console.error('Search error:', error);
+                    alert('Search error.');
+                }
+                document.querySelector('#usersTable tbody').innerHTML = '';
+            });
+    }
+
+    function resetSearch() {
+        document.getElementById('search-input').value = '';
+        fetchAllUsers();
+    }
+
+    // --- Role editing functions ---
+    function editRoles(userId) {
+        currentUserId = userId;
+        const modal = document.getElementById('rolesModal');
+        const checkboxesDiv = document.getElementById('rolesCheckboxes');
+        checkboxesDiv.innerHTML = '';
+
+        const user = users.find(u => u.id == userId);
+        if (!user) return;
+
+        Object.values(Role).forEach(role => {
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.id = `role_${role}`;
+            checkbox.value = role;
+            checkbox.checked = user.roles && user.roles.includes(role);
+
+            const label = document.createElement('label');
+            label.htmlFor = `role_${role}`;
+            label.textContent = role;
+
+            checkboxesDiv.appendChild(checkbox);
+            checkboxesDiv.appendChild(label);
+            checkboxesDiv.appendChild(document.createElement('br'));
+        });
+
+        modal.style.display = 'block';
+    }
+
+    function saveRoles() {
+        const checkboxes = document.querySelectorAll('#rolesCheckboxes input[type="checkbox"]');
+        const selectedRoles = Array.from(checkboxes)
+            .filter(cb => cb.checked)
+            .map(cb => cb.value);
+
+        axios.put(`/api/users/${currentUserId}/roles`, selectedRoles)
+            .then(response => {
+                alert('Roles updated successfully');
+                document.getElementById('rolesModal').style.display = 'none';
+                fetchAllUsers();
+            })
+            .catch(error => {
+                const errorMessage = error.response && error.response.data ? error.response.data : error.message;
+                alert('Error updating roles: ' + errorMessage);
+            });
+    }
+</script>
+</body>
+</html>

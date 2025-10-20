@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Каталог товаров</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <style>
+        .product-card {
+            transition: transform 0.2s, box-shadow 0.2s;
+            height: 100%;
+        }
+        .product-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        .product-image {
+            height: 200px;
+            object-fit: cover;
+        }
+        .cart-badge {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+        }
+        .filter-section {
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+        }
+        .price {
+            color: #dc3545;
+            font-weight: bold;
+            font-size: 1.2rem;
+        }
+        .out-of-stock {
+            opacity: 0.6;
+        }
+        .out-of-stock-label {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(220, 53, 69, 0.9);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+        }
+    </style>
+</head>
+<body>
+<!-- Навигация -->
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+    <div class="container">
+        <a class="navbar-brand" href="/">AutoSochi</a>
+        <div class="d-flex">
+            <a href="/cart.html" class="btn btn-outline-light position-relative me-2">
+                <i class="bi bi-cart3"></i> Корзина
+                <span id="cart-count" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">0</span>
+            </a>
+        </div>
+    </div>
+</nav>
+
+<div class="container mt-4">
+    <div class="row">
+        <!-- Фильтры -->
+        <div class="col-md-3">
+            <div class="filter-section mb-4">
+                <h5>Фильтры</h5>
+
+                <div class="mb-3">
+                    <label class="form-label">Категория</label>
+                    <select class="form-select" id="category-filter">
+                        <option value="">Все категории</option>
+                    </select>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Бренд</label>
+                    <select class="form-select" id="brand-filter">
+                        <option value="">Все бренды</option>
+                    </select>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Производитель</label>
+                    <select class="form-select" id="manufacturer-filter">
+                        <option value="">Все производители</option>
+                    </select>
+                </div>
+
+                <!-- Добавьте в секцию фильтров -->
+                <div class="mb-3">
+                    <label class="form-label">Марка автомобиля</label>
+                    <select class="form-select" id="carBrand-filter">
+                        <option value="">Все марки</option>
+                    </select>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Цена</label>
+                    <div class="row">
+                        <div class="col">
+                            <input type="number" class="form-control" placeholder="От" id="price-min">
+                        </div>
+                        <div class="col">
+                            <input type="number" class="form-control" placeholder="До" id="price-max">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-check mb-3">
+                    <input class="form-check-input" type="checkbox" id="in-stock-only">
+                    <label class="form-check-label" for="in-stock-only">Только в наличии</label>
+                </div>
+
+                <button class="btn btn-primary w-100" onclick="applyFilters()">Применить</button>
+                <button class="btn btn-outline-secondary w-100 mt-2" onclick="clearFilters()">Сбросить</button>
+            </div>
+        </div>
+
+        <!-- Товары -->
+        <div class="col-md-9">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2>Каталог товаров</h2>
+                <div class="d-flex align-items-center">
+                    <select class="form-select me-2" style="width: auto;" id="sort-by">
+                        <option value="name">По названию</option>
+                        <option value="price-asc">По цене (возр.)</option>
+                        <option value="price-desc">По цене (убыв.)</option>
+                        <option value="newest">Сначала новые</option>
+                    </select>
+                </div>
+            </div>
+
+            <div id="loading" class="text-center">
+                <div class="spinner-border" role="status">
+                    <span class="visually-hidden">Загрузка...</span>
+                </div>
+            </div>
+
+            <div id="products-grid" class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4" style="display: none;">
+                <!-- Товары будут загружены через JavaScript -->
+            </div>
+
+            <div id="no-products" class="text-center mt-4" style="display: none;">
+                <p class="text-muted">Товары не найдены</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно деталей товара -->
+<div class="modal fade" id="productModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="productModalTitle">Детали товара</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="productModalBody">
+                <!-- Контент будет загружен через JavaScript -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
+                <button type="button" class="btn btn-primary" onclick="addToCartFromModal()">Добавить в корзину</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    let allProducts = [];
+    let currentProduct = null;
+    const cart = JSON.parse(localStorage.getItem('cart')) || {};
+
+    document.addEventListener('DOMContentLoaded', function() {
+        updateCartCount();
+        loadProducts();
+    });
+
+    // Загрузка товаров
+    async function loadProducts() {
+        try {
+            const response = await fetch('/api/products/AllProducts');
+            if (!response.ok) throw new Error('Ошибка загрузки товаров');
+
+            allProducts = await response.json();
+            displayProducts(allProducts);
+            populateFilters(allProducts);
+
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('products-grid').style.display = 'grid';
+        } catch (error) {
+            console.error('Ошибка:', error);
+            document.getElementById('loading').innerHTML =
+                '<div class="alert alert-danger">Ошибка загрузки товаров</div>';
+        }
+    }
+
+    // Отображение товаров
+    function displayProducts(products) {
+        const grid = document.getElementById('products-grid');
+        grid.innerHTML = '';
+
+        if (products.length === 0) {
+            document.getElementById('no-products').style.display = 'block';
+            return;
+        }
+
+        document.getElementById('no-products').style.display = 'none';
+
+        products.forEach(product => {
+            const col = document.createElement('div');
+            col.className = 'col';
+
+            const imageHtml = product.previewImageId
+                ? `<img src="/images/${product.previewImageId}" class="card-img-top product-image" alt="${product.name}">`
+                : `<div class="card-img-top product-image bg-light d-flex align-items-center justify-content-center">
+                         <i class="bi bi-image text-muted" style="font-size: 3rem;"></i>
+                       </div>`;
+
+            col.innerHTML = `
+                    <div class="card product-card ${!product.inStock ? 'out-of-stock' : ''}">
+                        ${!product.inStock ? '<div class="out-of-stock-label">Нет в наличии</div>' : ''}
+                        ${imageHtml}
+                        <div class="card-body">
+                            <h6 class="card-title">${product.name}</h6>
+                            <p class="card-text">
+                                <span class="price">${product.price.toFixed(2)} ₽</span>
+                                <br>
+                                <small class="text-muted">Артикул: ${product.articleNumber}</small>
+                                ${product.manufacturer ? `<br><small class="text-muted">Производитель: ${product.manufacturer}</small>` : ''}
+                                ${product.carBrand ? `<br><small class="text-muted">Марка авто: ${product.carBrand}</small>` : ''}
+                            </p>
+                            <div class="d-flex justify-content-between">
+                                <button class="btn btn-outline-primary btn-sm" onclick="showProductDetails(${product.id})">
+                                    Подробнее
+                                </button>
+                                <button class="btn btn-success btn-sm" onclick="addToCart(${product.id})"
+                                    ${!product.inStock ? 'disabled' : ''}>
+                                    <i class="bi bi-cart-plus"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            grid.appendChild(col);
+        });
+    }
+
+    // Показать детали товара
+    async function showProductDetails(productId) {
+        try {
+            const response = await fetch(`/api/products/${productId}`);
+            if (!response.ok) throw new Error('Товар не найден');
+
+            currentProduct = await response.json();
+
+            const imagesHtml = currentProduct.images && currentProduct.images.length > 0
+                ? currentProduct.images.map(img =>
+                    `<img src="/images/${img.id}" class="img-fluid rounded mb-2" style="max-height: 200px;" alt="${img.originalFileName}">`
+                ).join('')
+                : '<p class="text-muted">Изображения отсутствуют</p>';
+
+            document.getElementById('productModalTitle').textContent = currentProduct.name;
+            document.getElementById('productModalBody').innerHTML = `
+                    <div class="row">
+                        <div class="col-md-6">
+                            ${imagesHtml}
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>Цена:</strong> ${currentProduct.price.toFixed(2)} ₽</p>
+                            <p><strong>Артикул:</strong> ${currentProduct.articleNumber}</p>
+                            <p><strong>Бренд:</strong> ${currentProduct.brand || 'Не указан'}</p>
+                            <p><strong>Производитель:</strong> ${currentProduct.manufacturer || 'Не указан'}</p>
+                            <p><strong>Марка автомобиля:</strong> ${currentProduct.carBrand || 'Не указана'}</p>
+                            <p><strong>Категория:</strong> ${currentProduct.category || 'Не указана'}</p>
+                            <p><strong>В наличии:</strong> ${currentProduct.inStock ? 'Да' : 'Нет'}</p>
+                            <p><strong>Количество:</strong> ${currentProduct.quantity} шт.</p>
+                            <p><strong>Описание:</strong></p>
+                            <p>${currentProduct.description || 'Описание отсутствует'}</p>
+                        </div>
+                    </div>
+                `;
+
+            new bootstrap.Modal(document.getElementById('productModal')).show();
+        } catch (error) {
+            console.error('Ошибка:', error);
+            alert('Ошибка загрузки деталей товара');
+        }
+    }
+
+    // Добавить в корзину
+    function addToCart(productId) {
+        const product = allProducts.find(p => p.id === productId);
+        if (!product) return;
+
+        if (!product.inStock) {
+            alert('Товар отсутствует в наличии');
+            return;
+        }
+
+        if (cart[productId]) {
+            cart[productId].quantity += 1;
+        } else {
+            cart[productId] = {
+                id: product.id,
+                name: product.name,
+                price: product.price,
+                imageId: product.previewImageId,
+                quantity: 1
+            };
+        }
+
+        saveCart();
+        updateCartCount();
+        showToast('Товар добавлен в корзину');
+    }
+
+    // Добавить из модального окна
+    function addToCartFromModal() {
+        if (currentProduct) {
+            addToCart(currentProduct.id);
+            bootstrap.Modal.getInstance(document.getElementById('productModal')).hide();
+        }
+    }
+
+    // Сохранить корзину
+    function saveCart() {
+        localStorage.setItem('cart', JSON.stringify(cart));
+    }
+
+    // Обновить счетчик корзины
+    function updateCartCount() {
+        const total = Object.values(cart).reduce((sum, item) => sum + item.quantity, 0);
+        document.getElementById('cart-count').textContent = total;
+    }
+
+    // Показать уведомление
+    function showToast(message) {
+        // Простая реализация toast
+        const toast = document.createElement('div');
+        toast.className = 'position-fixed bottom-0 end-0 m-3 alert alert-success';
+        toast.textContent = message;
+        toast.style.zIndex = '1050';
+        document.body.appendChild(toast);
+
+        setTimeout(() => {
+            toast.remove();
+        }, 3000);
+    }
+
+    // Заполнить фильтры
+    function populateFilters(products) {
+        const categories = new Set();
+        const brands = new Set();
+        const manufacturers = new Set();
+        const carBrands = new Set();
+
+        products.forEach(product => {
+            if (product.category) categories.add(product.category);
+            if (product.brand) brands.add(product.brand);
+            if (product.manufacturer) manufacturers.add(product.manufacturer);
+            if (product.carBrand) carBrands.add(product.carBrand);
+        });
+
+        const categorySelect = document.getElementById('category-filter');
+        const brandSelect = document.getElementById('brand-filter');
+        const manufacturerSelect = document.getElementById('manufacturer-filter');
+        const carBrandSelect = document.getElementById('carBrand-filter');
+
+        categories.forEach(category => {
+            const option = document.createElement('option');
+            option.value = category;
+            option.textContent = category;
+            categorySelect.appendChild(option);
+        });
+
+        brands.forEach(brand => {
+            const option = document.createElement('option');
+            option.value = brand;
+            option.textContent = brand;
+            brandSelect.appendChild(option);
+        });
+
+        manufacturers.forEach(manufacturer => {
+            const option = document.createElement('option');
+            option.value = manufacturer;
+            option.textContent = manufacturer;
+            manufacturerSelect.appendChild(option);
+        });
+
+        carBrands.forEach(carBrand => {
+            const option = document.createElement('option');
+            option.value = carBrand;
+            option.textContent = carBrand;
+            carBrandSelect.appendChild(option);
+        });
+    }
+
+    // Применить фильтры
+    function applyFilters() {
+        const category = document.getElementById('category-filter').value;
+        const brand = document.getElementById('brand-filter').value;
+        const manufacturer = document.getElementById('manufacturer-filter').value;
+        const carBrand = document.getElementById('carBrand-filter').value;
+        const priceMin = parseFloat(document.getElementById('price-min').value) || 0;
+        const priceMax = parseFloat(document.getElementById('price-max').value) || Infinity;
+        const inStockOnly = document.getElementById('in-stock-only').checked;
+        const sortBy = document.getElementById('sort-by').value;
+
+        let filtered = allProducts.filter(product =>
+            (!category || product.category === category) &&
+            (!brand || product.brand === brand) &&
+            (!manufacturer || product.manufacturer === manufacturer) &&
+            (!carBrand || product.carBrand === carBrand) &&
+            product.price >= priceMin &&
+            product.price <= priceMax &&
+            (!inStockOnly || product.inStock)
+        );
+
+        // Сортировка
+        switch (sortBy) {
+            case 'price-asc':
+                filtered.sort((a, b) => a.price - b.price);
+                break;
+            case 'price-desc':
+                filtered.sort((a, b) => b.price - a.price);
+                break;
+            case 'name':
+                filtered.sort((a, b) => a.name.localeCompare(b.name));
+                break;
+            case 'newest':
+                // Предполагаем, что новые товары имеют больший ID
+                filtered.sort((a, b) => b.id - a.id);
+                break;
+        }
+
+        displayProducts(filtered);
+    }
+
+    // Сбросить фильтры
+    function clearFilters() {
+        document.getElementById('category-filter').value = '';
+        document.getElementById('brand-filter').value = '';
+        document.getElementById('manufacturer-filter').value = '';
+        document.getElementById('carBrand-filter').value = '';
+        document.getElementById('price-min').value = '';
+        document.getElementById('price-max').value = '';
+        document.getElementById('in-stock-only').checked = false;
+        document.getElementById('sort-by').value = 'name';
+
+        displayProducts(allProducts);
+    }
+
+    // Слушатели изменений
+    document.getElementById('sort-by').addEventListener('change', applyFilters);
+</script>
+</body>
+</html>
