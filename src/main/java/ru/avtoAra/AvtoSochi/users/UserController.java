@@ -110,7 +110,7 @@ public class UserController {
         try {
             String newEmail = payload.get("email");
             Users currentUser = userService.findEmail(userDetails.getUsername());
-            userService.requestEmailChange(currentUser.getId(), newEmail);
+            userService.requestEmailChange(currentUser, newEmail);
             return ResponseEntity.ok("Код подтверждения отправлен на почту");
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(e.getMessage());
@@ -123,7 +123,7 @@ public class UserController {
         try {
             String code = payload.get("code");
             Users currentUsers = userService.findEmail(userDetails.getUsername());
-            userService.confirmEmailChange(currentUsers.getId(), code);
+            userService.confirmEmailChange(currentUsers, code);
             return ResponseEntity.ok("Почта успешно обновлена");
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(e.getMessage());

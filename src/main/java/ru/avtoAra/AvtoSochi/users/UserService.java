@@ -138,13 +138,11 @@ public class UserService {
 
 
     @Transactional
-    public void requestEmailChange(Long id, String newEmail) {
+    public void requestEmailChange(Users users, String newEmail) {
         if (userRepository.findByEmail(newEmail).isPresent()) {
             throw new IllegalArgumentException("Почта уже занята");
         }
 
-        Users users = userRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Пользователь не найден"));
 
         String code = UUID.randomUUID().toString().substring(0, 6).toUpperCase();
         users.setEmailChangeCode(code);
@@ -156,9 +154,10 @@ public class UserService {
     }
 
     @Transactional
-    public void confirmEmailChange(Long id, String code) {
-        Users users = userRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Пользователь не найден"));
+    public void confirmEmailChange(Users users, String code) {
+      if(userRepository.findById(users.getId()).isEmpty()){
+          throw new IllegalArgumentException("Пользователь не найден");
+      }
 
         if (users.getEmailChangeCode() == null || !users.getEmailChangeCode().equals(code)) {
             throw new IllegalArgumentException("Неверный код подтверждения.");
