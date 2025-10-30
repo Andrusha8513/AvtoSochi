@@ -61,10 +61,13 @@
             <div class="modal-body">
                 <p>Мы отправили код на вашу новую почту. Пожалуйста, введите его ниже.</p>
                 <div id="modalErrorAlert" class="alert alert-danger" style="display: none;"></div>
+                <div id="modalSuccessAlert" class="alert alert-success" style="display: none;"></div>
                 <input type="text" class="form-control" id="emailCodeInput" placeholder="Код подтверждения">
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
+                <!-- Добавленная кнопка для повторной отправки кода -->
+                <button type="button" class="btn btn-warning" id="resendEmailCodeBtn">Отправить код повторно</button>
                 <button type="button" class="btn btn-primary" id="confirmEmailChangeBtn">Подтвердить</button>
             </div>
         </div>
@@ -75,12 +78,15 @@
 <script>
     let currentUser = null;
     let confirmationModal = null;
+    let currentPendingEmail = null; // Добавлена переменная для хранения новой почты
 
     document.addEventListener('DOMContentLoaded', async function() {
         confirmationModal = new bootstrap.Modal(document.getElementById('confirmationModal'));
         await loadUserProfile();
         document.getElementById('profileForm').addEventListener('submit', handleFormSubmit);
         document.getElementById('confirmEmailChangeBtn').addEventListener('click', handleConfirmEmailChange);
+        // Добавлен обработчик для кнопки повторной отправки кода
+        document.getElementById('resendEmailCodeBtn').addEventListener('click', handleResendEmailCode);
     });
 
     async function loadUserProfile() {
@@ -122,6 +128,7 @@
         // 2. Если меняется почта - отправляем запрос на подтверждение
         if (newEmail && newEmail !== currentUser.email) {
             try {
+                currentPendingEmail = newEmail; // Сохраняем новую почту для повторной отправки
                 const response = await fetch('/api/users/request-email-change', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
@@ -143,8 +150,7 @@
     async function handleConfirmEmailChange() {
         const code = document.getElementById('emailCodeInput').value;
         if (!code) {
-            document.getElementById('modalErrorAlert').textContent = 'Введите код.';
-            document.getElementById('modalErrorAlert').style.display = 'block';
+            showModalError('Введите код.');
             return;
         }
 
@@ -163,9 +169,31 @@
             document.getElementById('currentEmail').value = document.getElementById('newEmail').value;
             document.getElementById('newEmail').value = '';
             document.getElementById('emailCodeInput').value = '';
+            currentPendingEmail = null; // Сбрасываем сохраненную почту
+            hideModalAlerts();
         } catch (error) {
-            document.getElementById('modalErrorAlert').textContent = error.message;
-            document.getElementById('modalErrorAlert').style.display = 'block';
+            showModalError(error.message);
+        }
+    }
+
+    // 4. Новый метод для повторной отправки кода
+    async function handleResendEmailCode() {
+        if (!currentPendingEmail) {
+            showModalError('Нет активной почты для подтверждения.');
+            return;
+        }
+
+        try {
+            // Используем параметр запроса для передачи email
+            const response = await fetch(`/api/users/resend-pendingEmail-code?pendingEmail=${encodeURIComponent(currentPendingEmail)}`, {
+                method: 'POST'
+            });
+            const responseText = await response.text();
+            if (!response.ok) throw new Error(responseText);
+
+            showModalSuccess('Новый код подтверждения отправлен!');
+        } catch (error) {
+            showModalError(error.message);
         }
     }
 
@@ -182,6 +210,26 @@
         alert.textContent = message;
         alert.style.display = 'block';
         setTimeout(() => { alert.style.display = 'none'; }, 3000);
+    }
+
+    // Функции для показа алертов в модальном окне
+    function showModalError(message) {
+        const alert = document.getElementById('modalErrorAlert');
+        alert.textContent = message;
+        alert.style.display = 'block';
+        setTimeout(() => { alert.style.display = 'none'; }, 5000);
+    }
+
+    function showModalSuccess(message) {
+        const alert = document.getElementById('modalSuccessAlert');
+        alert.textContent = message;
+        alert.style.display = 'block';
+        setTimeout(() => { alert.style.display = 'none'; }, 3000);
+    }
+
+    function hideModalAlerts() {
+        document.getElementById('modalErrorAlert').style.display = 'none';
+        document.getElementById('modalSuccessAlert').style.display = 'none';
     }
 </script>
 </body>

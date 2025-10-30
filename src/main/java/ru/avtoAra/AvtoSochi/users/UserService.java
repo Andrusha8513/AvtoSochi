@@ -22,7 +22,7 @@ public class UserService {
     private final SessionRegistry sessionRegistry;
     private final EmailService emailService;
 
-    @Autowired
+
     public UserService(UserRepository userRepository,
                        PasswordEncoder passwordEncoder,
                        SessionRegistry sessionRegistry,
@@ -60,6 +60,19 @@ public class UserService {
 
         return saveUser;
     }
+    @Transactional
+    public boolean confirmRegistration(String code) {
+        Optional<Users> usersOptional = userRepository.findByConfirmationCode(code);
+
+        if (usersOptional.isPresent()) {
+            Users user = usersOptional.get();
+            user.setEnabled(true);
+            user.setConfirmationCode(null);
+            userRepository.save(user);
+            return true;
+        }
+        return false;
+    }
 
     @Transactional
     public void resendConfirmationCode(String email) {
@@ -77,6 +90,7 @@ public class UserService {
         emailService.sendConfirmationEmail(users.getEmail(), newConfirmationCode);
 
     }
+
 
     @Transactional
     public void sendPasswordResetCode(String email) {
@@ -104,7 +118,7 @@ public class UserService {
         }
 
         if (LocalDateTime.now().isAfter(users.getPasswordResetCodeExpiryDate())) {
-            throw new IllegalArgumentException("Срок дейтсвия кода истёк");
+            throw new IllegalArgumentException("Срок действия  кода истёк");
         }
 
         String encodePassword = passwordEncoder.encode(newPassword);
@@ -112,28 +126,6 @@ public class UserService {
         users.setPasswordResetCode(null);
         users.setPasswordResetCodeExpiryDate(null);
         userRepository.save(users);
-    }
-
-    @Transactional
-    public boolean confirmRegistration(String code) {
-        Optional<Users> usersOptional = userRepository.findByConfirmationCode(code);
-
-        if (usersOptional.isPresent()) {
-            Users user = usersOptional.get();
-            user.setEnabled(true);
-            user.setConfirmationCode(null);
-            userRepository.save(user);
-            return true;
-        }
-        return false;
-    }
-
-    public void deleteUsers(Long id) {
-        if (userRepository.findById(id).isPresent()) {
-            userRepository.deleteById(id);
-        } else {
-            throw new IllegalArgumentException("Пользователя с таким id=%s нет".formatted(id));
-        }
     }
 
 
@@ -154,6 +146,18 @@ public class UserService {
     }
 
     @Transactional
+    public void resendEmailChangeCode(String pendingEmail){
+        Users users = userRepository.findByPendingEmail(pendingEmail)
+                .orElseThrow( () -> new IllegalArgumentException("Почта не найдена"));
+
+        String code = UUID.randomUUID().toString().substring(0 , 6).toUpperCase();
+
+        users.setEmailChangeCode(code);
+        userRepository.save(users);
+        emailService.sendConfirmationEmail(pendingEmail , code);
+    }
+
+    @Transactional
     public void confirmEmailChange(Users users, String code) {
       if(userRepository.findById(users.getId()).isEmpty()){
           throw new IllegalArgumentException("Пользователь не найден");
@@ -171,11 +175,12 @@ public class UserService {
     }
 
     @Transactional
-    public void updateUserPassword(Long id,
+    public void updateUserPassword(Users users ,
                                    String newPassword,
                                    String currenPassword) {
-        Users users = userRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Пользователь не найден"));
+      if(userRepository.findById(users.getId()).isEmpty()){
+          throw new IllegalArgumentException("Пользователь не найден");
+      }
 
         if (newPassword != null && !newPassword.isEmpty()) {
             if (currenPassword == null || currenPassword.isEmpty()) {
@@ -202,7 +207,7 @@ public class UserService {
         Users users = userRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Такой пользователь не найден"));
 
-        if (newRole.isEmpty() && newRole == null) {
+        if (newRole == null && newRole.isEmpty()) {
             throw new IllegalArgumentException("Роли могут пыть пустыми");
         }
         users.setRoles(newRole);
@@ -259,7 +264,7 @@ public class UserService {
 
     @Scheduled(cron = "0 0 3 * * ?")
     @Transactional
-    public void deleteInactiveUsers() {
+    public void deleteInactiveUsers() {;
         LocalDateTime twentyFourHoursAho = LocalDateTime.now().minus(24, ChronoUnit.HOURS);
         List<Users> inactiveUsers = userRepository.findByEnabledIsFalseAndRegistrationDateBefore(twentyFourHoursAho);
 
@@ -268,6 +273,15 @@ public class UserService {
             System.out.println("Удалено " + inactiveUsers.size() + "неактивных пользователей");
         }
     }
+
+    public void deleteUsers(Long id) {
+        if (userRepository.findById(id).isPresent()) {
+            userRepository.deleteById(id);
+        } else {
+            throw new IllegalArgumentException("Пользователя с таким id=%s нет".formatted(id));
+        }
+    }
+
 
 }
 

@@ -76,6 +76,15 @@ public class UserController {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
+    @PostMapping("/resend-pendingEmail-code")
+    public ResponseEntity<?> resendPendingCode(@RequestParam String pendingEmail){
+        try {
+            userService.resendEmailChangeCode(pendingEmail);
+            return ResponseEntity.ok("Новый код отправлен");
+        }catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
 
     @PostMapping("/password/reset-confirm")
     public ResponseEntity<?> confirmPasswordReset(@RequestBody Map<String, String> payload) {
@@ -137,7 +146,7 @@ public class UserController {
             String newPassword = payload.get("newPassword");
             String currentPassword = payload.get("currentPassword");
             Users currentUsers = userService.findEmail(userDetails.getUsername());
-            userService.updateUserPassword(currentUsers.getId() , newPassword , currentPassword);
+            userService.updateUserPassword(currentUsers , newPassword , currentPassword);
             return ResponseEntity.ok("Пароль успешно изменён");
         }catch (Exception e){
             return ResponseEntity.badRequest().body(e.getMessage());
