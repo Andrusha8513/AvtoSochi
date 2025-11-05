@@ -8,6 +8,7 @@ import ru.avtoAra.AvtoSochi.users.Product.Product;
 import ru.avtoAra.AvtoSochi.users.Product.ProductRepository;
 import ru.avtoAra.AvtoSochi.users.UserRepository;
 import ru.avtoAra.AvtoSochi.users.Users;
+import ru.avtoAra.AvtoSochi.users.DTO.CartItemDto;
 
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
@@ -294,24 +295,5 @@ public class OrderService {
     }
 
 
-    public static class CartItemDto {
-        private Long id;
-        private int quantity;
 
-        public Long getId() {
-            return id;
-        }
-
-        public void setId(Long id) {
-            this.id = id;
-        }
-
-        public int getQuantity() {
-            return quantity;
-        }
-
-        public void setQuantity(int quantity) {
-            this.quantity = quantity;
-        }
-    }
 }

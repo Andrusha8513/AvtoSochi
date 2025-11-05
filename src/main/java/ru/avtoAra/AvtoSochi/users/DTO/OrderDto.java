@@ -89,4 +89,12 @@ public class OrderDto {
     public void setTotalPrice(double totalPrice) {
         this.totalPrice = totalPrice;
     }
+
+    public double getSummItem() {
+        return summItem;
+    }
+
+    public void setSummItem(double summItem) {
+        this.summItem = summItem;
+    }
 }

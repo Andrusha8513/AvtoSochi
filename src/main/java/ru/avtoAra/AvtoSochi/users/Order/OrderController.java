@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.*;
 import ru.avtoAra.AvtoSochi.users.UserService;
 import ru.avtoAra.AvtoSochi.users.Users;
 import ru.avtoAra.AvtoSochi.users.DTO.OrderDto;
+import ru.avtoAra.AvtoSochi.users.DTO.CartItemDto;
 
 import java.util.List;
 import java.util.Map;
@@ -27,7 +28,7 @@ public class OrderController {
     }
 
     @PostMapping("/checkout")
-    public ResponseEntity<OrderDto> createOrder(@RequestBody Map<Long, OrderService.CartItemDto> cart,
+    public ResponseEntity<OrderDto> createOrder(@RequestBody Map<Long, CartItemDto> cart,
                                                 @AuthenticationPrincipal UserDetails userDetails) {
         if (userDetails == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
