@@ -113,7 +113,7 @@ public class WebSecurityConfig {
     }
 
 }
-//    @Scheduled(fixedRate = 60000) // Очистка каждые 60 секунд
+//    @Scheduled(fixedRate = 60000) // 60 сек
 //    public void cleanupExpiredTokens(){
 //        try {
 //            try (var connection = dataSource.getConnection();

@@ -1,6 +1,7 @@
 package ru.avtoAra.AvtoSochi.users;
 
 import jakarta.transaction.Transactional;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.security.core.session.SessionInformation;
@@ -15,6 +16,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 
+@Slf4j
 @Service
 public class UserService {
     private final UserRepository userRepository;
@@ -222,45 +224,45 @@ public class UserService {
 
     }
 
-    // разобраться над методом
-    public void expireUserSessions(String username) {
-        System.out.println("Attempting to expire sessions for: " + username);
+//public void expireUserSessions(String username){
+//        sessionRegistry.getAllPrincipals().stream()
+//                .filter(Users.class::isInstance)
+//                .map(Users.class::cast)
+//                .filter(users -> username.equals(users.getEmail()))
+//                .findFirst()
+//                .ifPresent(users -> {
+//                    List<SessionInformation> session = sessionRegistry.getAllSessions(users , false);
+//                    session.forEach(session1 ->{
+//                        session1.expireNow();
+//                    });
+//                });
+//}
 
-        // Прохожу  по всем принципалам в реестре сессий
+    public void expireUserSessions(String username) {
+
         for (Object principal : sessionRegistry.getAllPrincipals()) {
             String principalName;
 
-            // Оопределяю  тип принципала и получаю     имя пользователя
-            if (principal instanceof org.springframework.security.core.userdetails.User) {
-                principalName = ((org.springframework.security.core.userdetails.User) principal).getUsername();
-            } else if (principal instanceof String) {
-                principalName = (String) principal;
-            } else if (principal instanceof Users) {
+           if (principal instanceof Users) {
                 principalName = ((Users) principal).getEmail();
             } else {
 
                 continue;
             }
-
-            System.out.println("Found principal: " + principalName);
-
-            // если нашёл нужного пользователя
             if (principalName.equals(username)) {
                 List<SessionInformation> sessions = sessionRegistry.getAllSessions(principal, false);
-                System.out.println("Found " + sessions.size() + " sessions for user: " + username);
-
-                // Завершаем все сессии
                 sessions.forEach(session -> {
-                    System.out.println("Expiring session: " + session.getSessionId());
                     session.expireNow();
                 });
 
-                return; //выход после обработки
+                return;
             }
         }
 
-        System.out.println("No sessions found for user: " + username);
+
     }
+
+
 
     @Scheduled(cron = "0 0 3 * * ?")
     @Transactional

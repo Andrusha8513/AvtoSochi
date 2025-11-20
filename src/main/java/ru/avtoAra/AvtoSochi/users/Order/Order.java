@@ -15,7 +15,7 @@ public class Order {
     private Long id;
 
     @ManyToOne
-    @JoinColumn(name = "users_id")//Может быть ошибка , лучше  users_id
+    @JoinColumn(name = "users_id")
     private Users users;
 
     @OneToMany(mappedBy = "order" , cascade = CascadeType.ALL , orphanRemoval = true)

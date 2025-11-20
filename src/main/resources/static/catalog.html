@@ -50,7 +50,7 @@
     </style>
 </head>
 <body>
-<!-- Навигация -->
+
 <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
     <div class="container">
         <a class="navbar-brand" href="/">AutoSochi</a>
@@ -91,7 +91,7 @@
                     </select>
                 </div>
 
-                <!-- Добавьте в секцию фильтров -->
+
                 <div class="mb-3">
                     <label class="form-label">Марка автомобиля</label>
                     <select class="form-select" id="carBrand-filter">
@@ -121,7 +121,7 @@
             </div>
         </div>
 
-        <!-- Товары -->
+
         <div class="col-md-9">
             <div class="d-flex justify-content-between align-items-center mb-4">
                 <h2>Каталог товаров</h2>
@@ -142,7 +142,7 @@
             </div>
 
             <div id="products-grid" class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4" style="display: none;">
-                <!-- Товары будут загружены через JavaScript -->
+
             </div>
 
             <div id="no-products" class="text-center mt-4" style="display: none;">
@@ -152,7 +152,7 @@
     </div>
 </div>
 
-<!-- Модальное окно деталей товара -->
+
 <div class="modal fade" id="productModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
@@ -161,7 +161,7 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body" id="productModalBody">
-                <!-- Контент будет загружен через JavaScript -->
+
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
@@ -182,7 +182,7 @@
         loadProducts();
     });
 
-    // Загрузка товаров
+
     async function loadProducts() {
         try {
             const response = await fetch('/api/products/AllProducts');
@@ -201,7 +201,7 @@
         }
     }
 
-    // Отображение товаров
+
     function displayProducts(products) {
         const grid = document.getElementById('products-grid');
         grid.innerHTML = '';
@@ -252,7 +252,7 @@
         });
     }
 
-    // Показать детали товара
+
     async function showProductDetails(productId) {
         try {
             const response = await fetch(`/api/products/${productId}`);
@@ -294,7 +294,7 @@
         }
     }
 
-    // Добавить в корзину
+
     function addToCart(productId) {
         const product = allProducts.find(p => p.id === productId);
         if (!product) return;
@@ -321,7 +321,7 @@
         showToast('Товар добавлен в корзину');
     }
 
-    // Добавить из модального окна
+
     function addToCartFromModal() {
         if (currentProduct) {
             addToCart(currentProduct.id);
@@ -329,18 +329,18 @@
         }
     }
 
-    // Сохранить корзину
+
     function saveCart() {
         localStorage.setItem('cart', JSON.stringify(cart));
     }
 
-    // Обновить счетчик корзины
+
     function updateCartCount() {
         const total = Object.values(cart).reduce((sum, item) => sum + item.quantity, 0);
         document.getElementById('cart-count').textContent = total;
     }
 
-    // Показать уведомление
+
     function showToast(message) {
         // Простая реализация toast
         const toast = document.createElement('div');
@@ -354,7 +354,7 @@
         }, 3000);
     }
 
-    // Заполнить фильтры
+
     function populateFilters(products) {
         const categories = new Set();
         const brands = new Set();
@@ -402,7 +402,7 @@
         });
     }
 
-    // Применить фильтры
+
     function applyFilters() {
         const category = document.getElementById('category-filter').value;
         const brand = document.getElementById('brand-filter').value;
@@ -423,7 +423,7 @@
             (!inStockOnly || product.inStock)
         );
 
-        // Сортировка
+
         switch (sortBy) {
             case 'price-asc':
                 filtered.sort((a, b) => a.price - b.price);
@@ -443,7 +443,7 @@
         displayProducts(filtered);
     }
 
-    // Сбросить фильтры
+
     function clearFilters() {
         document.getElementById('category-filter').value = '';
         document.getElementById('brand-filter').value = '';
@@ -457,7 +457,7 @@
         displayProducts(allProducts);
     }
 
-    // Слушатели изменений
+
     document.getElementById('sort-by').addEventListener('change', applyFilters);
 </script>
 </body>

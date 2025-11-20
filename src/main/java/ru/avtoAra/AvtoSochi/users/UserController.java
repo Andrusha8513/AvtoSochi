@@ -11,8 +11,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-@RestController //  @RestController для обработки RESTful запросов
-@RequestMapping("/api/users") // Добавлен базовый путь для API пользователей
+@RestController
+@RequestMapping("/api/users")
 public class UserController {
     private final UserService userService;
 
@@ -21,10 +21,7 @@ public class UserController {
         this.userService = userService;
     }
 
-//    @GetMapping("login")
-//    public String showRegistrationForm() {
-//        return "login"; // Возвращает имя представления registration.html
-//    }
+
 
 
     @GetMapping
@@ -48,8 +45,7 @@ public class UserController {
     }
 
     @PostMapping("/registration")
-    public ResponseEntity<?> registerUser(@RequestBody Users user) { // Принимаем JSON в теле запроса Объявление метода registerUser, который возвращает ResponseEntity<?> (ответ с любым типом тела).
-        //@RequestBody указывает, что параметр user должен быть извлечён из тела запроса (ожидается JSON).
+    public ResponseEntity<?> registerUser(@RequestBody Users user) {
         try {
             Users createdUser = userService.createUsers(user);
             return new ResponseEntity<>("Registration successful. Please check your email to confirm.", HttpStatus.CREATED);
@@ -165,7 +161,7 @@ public class UserController {
     }
 
     @PutMapping("/{userId}/roles")
-    //@PreAuthorize("hasRole('ADMIN')")
+    //@PreAuthorize("hasRole('ADMIN')")// надо тестануть , в беопастность добавил проверку на админа , надо проверить как эта штука работать будет
     public ResponseEntity<?> updateRoles(@PathVariable Long userId,
                                          @RequestBody Set<Role> newRole) {
         try {

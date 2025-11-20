@@ -61,7 +61,6 @@
             <th>Категория</th>
             <th>Бренд</th>
             <th>Производитель</th>
-            <!-- Добавьте новый столбец в таблицу -->
             <th>Марка авто</th>
             <th>Описание</th>
             <th>В наличии</th>
@@ -152,7 +151,7 @@
     document.addEventListener('DOMContentLoaded', function() {
         fetchProducts();
 
-        // Обработчик кликов по кнопкам "Редактировать" и "Удалить"
+
         document.getElementById('product-table-body').addEventListener('click', function(e) {
             const target = e.target.closest('button');
             if (!target) return;
@@ -166,16 +165,16 @@
             }
         });
 
-        // Обработчик сохранения формы редактирования
+
         document.getElementById('saveChangesBtn').addEventListener('click', submitEditForm);
 
-        // Предпросмотр для новых изображений в модальном окне
+
         document.getElementById('edit-files').addEventListener('change', previewEditImages);
 
-        // Обработчики для кнопок "Сделать превью" и "Удалить" в модальном окне
+
         document.getElementById('editProductModal').addEventListener('click', async function(e) {
             const target = e.target;
-            const productId = document.getElementById('edit-productId').value; // Получаем ID продукта из скрытого поля
+            const productId = document.getElementById('edit-productId').value;
 
             if (target.classList.contains('set-preview-btn')) {
                 const imageId = target.dataset.imageId;
@@ -192,9 +191,9 @@
                     }
 
                     showMessage('Превью успешно обновлено!');
-                    // Перезагружаем модальное окно, чтобы обновить состояние кнопок
+
                     handleEdit(productId);
-                    // Также обновите основную таблицу, чтобы новое превью отобразилось
+
                     fetchProducts();
                 } catch (error) {
                     console.error('Ошибка при установке превью:', error);
@@ -217,10 +216,7 @@
                     }
 
                     showMessage('Изображение успешно удалено!');
-                    // Обновляем отображение существующих изображений в модальном окне
-                    // Удаляем элемент из DOM
                     target.closest('.img-wrapper').remove();
-                    // Также обновите основную таблицу, если удалено превью
                     fetchProducts();
                 } catch (error) {
                     console.error('Ошибка при удалении изображения:', error);
@@ -230,7 +226,7 @@
         });
     });
 
-    // Функция для отображения сообщений
+
     function showMessage(text, type = 'success') {
         const messageEl = document.getElementById(type === 'success' ? 'success-message' : 'error-message');
         messageEl.textContent = text;
@@ -280,7 +276,7 @@
         }
     }
 
-    // ----- ЛОГИКА РЕДАКТИРОВАНИЯ -----
+
     let editModal;
     async function handleEdit(id) {
         if (!editModal) {
@@ -292,7 +288,7 @@
             if (!response.ok) throw new Error('Товар не найден');
             const product = await response.json();
 
-            // Заполняем форму
+
             document.getElementById('edit-productId').value = product.id;
             document.getElementById('edit-name').value = product.name;
             document.getElementById('edit-articleNumber').value = product.articleNumber;
@@ -305,22 +301,22 @@
             document.getElementById('edit-description').value = product.description || '';
             document.getElementById('edit-inStock').checked = product.inStock;
 
-            // Очищаем старые превью для новых файлов и поле для загрузки новых файлов
+
             document.getElementById('image-preview-container-edit').innerHTML = '';
             document.getElementById('edit-files').value = '';
 
-            // Код для отображения существующих изображений
+
             const existingImagesContainer = document.getElementById('existing-images-container');
-            existingImagesContainer.innerHTML = ''; // Очищаем контейнер перед заполнением
+            existingImagesContainer.innerHTML = '';
 
             if (product.images && product.images.length > 0) {
                 product.images.forEach(image => {
                     const imgWrapper = document.createElement('div');
                     imgWrapper.classList.add('img-wrapper', 'd-flex', 'flex-column', 'align-items-center');
-                    imgWrapper.dataset.imageId = image.id; // Для идентификации изображения
+                    imgWrapper.dataset.imageId = image.id;
 
                     const img = document.createElement('img');
-                    img.src = `/images/${image.id}`; // Используем ImageController для получения изображения
+                    img.src = `/images/${image.id}`;
                     img.classList.add('image-preview');
                     img.alt = image.originalFileName;
 
@@ -410,13 +406,13 @@
 
             editModal.hide();
             showMessage('Товар успешно обновлен!');
-            fetchProducts(); // Обновляем таблицу
+            fetchProducts();
         } catch (error) {
             showMessage(error.message, 'danger');
         }
     }
 
-    // ----- ЛОГИКА УДАЛЕНИЯ -----
+
     async function handleDelete(id) {
         if (!confirm(`Вы уверены, что хотите удалить товар с ID ${id}?`)) {
             return;

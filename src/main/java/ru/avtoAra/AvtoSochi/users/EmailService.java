@@ -16,7 +16,7 @@ public class EmailService {
         SimpleMailMessage message = new SimpleMailMessage();
         message.setTo(to);
         message.setSubject("Подтверждение регистрации на AvtoSochi");
-        message.setText("Дорогая вот твой персональны пароль для входа, ЛЮБЛЮ ТЕБЯ)): " + code);
+        message.setText("Работяга твой персональны код)): " + code);
         mailSender.send(message);
     }
 

@@ -50,7 +50,6 @@ public class OrderController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
         Users users = userService.findEmail(userDetails.getUsername());
-        // Вызываем новый DTO-метод
         return ResponseEntity.ok(orderService.findOrdersForUserAsDto(users.getId()));
     }
 

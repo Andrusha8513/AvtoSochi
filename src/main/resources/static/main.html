@@ -50,27 +50,27 @@
 </div>
 
 <script>
-    // --- Global variables and configuration ---
+
     let users = [];
     let currentUserId = null;
     const Role = { USER: 'ROLE_USER', ADMIN: 'ROLE_ADMIN' };
 
-    // Get CSRF token from cookie
+
     function getCookie(name) {
         const value = `; ${document.cookie}`;
         const parts = value.split(`; ${name}=`);
         if (parts.length === 2) return parts.pop().split(';').shift();
     }
 
-    // Set CSRF token for Axios
+
     axios.defaults.headers.common['X-XSRF-TOKEN'] = getCookie('XSRF-TOKEN');
 
-    // --- Main logic when page loads ---
+
     document.addEventListener('DOMContentLoaded', function() {
         fetchAllUsers();
     });
 
-    // --- Data functions ---
+
     function fetchAllUsers() {
         axios.get('/api/users')
             .then(function(response) {
@@ -102,7 +102,7 @@
         });
     }
 
-    // --- Search functions ---
+
     function searchUser() {
         const email = document.getElementById('search-input').value;
         if (!email) {
@@ -130,7 +130,7 @@
         fetchAllUsers();
     }
 
-    // --- Role editing functions ---
+
     function editRoles(userId) {
         currentUserId = userId;
         const modal = document.getElementById('rolesModal');

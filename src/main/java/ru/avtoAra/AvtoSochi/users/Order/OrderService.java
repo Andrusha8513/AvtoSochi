@@ -56,11 +56,11 @@ public class OrderService {
                     .orElseThrow(() -> new IllegalArgumentException("Продукт с таким ID" + itemDto.getId() + "не найден"));
 
             OrderItem orderItem = new OrderItem();//создаю новый ЭЛЕМЕНТ ЗАКАЗА(то одну часть заказа)
-            orderItem.setOrder(order); // Связь с объектом заказа
+            orderItem.setOrder(order); // двязь с объектом заказа
             orderItem.setProduct(product);// с товаром
             orderItem.setQuantity(itemDto.getQuantity());
             orderItem.setPriceAtPurchase(product.getPrice());
-            order.getItems().add(orderItem);// Добавляю в заказ
+            order.getItems().add(orderItem);// добавляю в заказ
 
             totalPrice += product.getPrice() * itemDto.getQuantity();
         }

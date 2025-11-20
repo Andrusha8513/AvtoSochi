@@ -3,7 +3,7 @@ package ru.avtoAra.AvtoSochi.users.DTO;
 import java.util.List;
 
 public class ProductDto {
-    // Поля для каталога и админ-панели
+
     private Long id;
     private String name;
     private Integer quantity;
@@ -17,7 +17,6 @@ public class ProductDto {
     private Boolean inStock;
     private Long previewImageId;
 
-    // Поле для модального окна редактирования
     private List<ImageDto> images;
 
 
